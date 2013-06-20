@@ -2,13 +2,15 @@ require 'formula'
 
 class Ruby < Formula
   homepage 'http://www.ruby-lang.org/en/'
-  url 'http://ftp.ruby-lang.org/pub/ruby/2.0/ruby-2.0.0-p195.tar.bz2'
-  sha256 '0be32aef7a7ab6e3708cc1d65cd3e0a99fa801597194bbedd5799c11d652eb5b'
+  url 'http://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p392.tar.bz2'
+  sha256 '5a7334dfdf62966879bf539b8a9f0b889df6f3b3824fb52a9303c3c3d3a58391'
 
   head 'http://svn.ruby-lang.org/repos/ruby/trunk/'
 
+  env :std
+
   option :universal
-  option 'with-suffix', 'Suffix commands with "20"'
+  option 'with-suffix', 'Suffix commands with "19"'
   option 'with-doc', 'Install documentation'
   option 'with-tcltk', 'Install with Tcl/Tk support'
 
@@ -22,8 +24,7 @@ class Ruby < Formula
   depends_on 'readline'
   depends_on 'gdbm'
   depends_on 'libyaml'
-  depends_on 'openssl' if MacOS.version >= :mountain_lion
-  depends_on :x11 if build.with? 'tcltk'
+  depends_on :x11 if build.include? 'with-tcltk'
 
   fails_with :llvm do
     build 2326
@@ -32,20 +33,13 @@ class Ruby < Formula
   def install
     system "autoconf" if build.head?
 
-    args = %W[--prefix=#{prefix} --enable-shared]
-    args << "--program-suffix=20" if build.with? "suffix"
-    args << "--with-arch=x86_64,i386" if build.universal?
-    args << "--with-out-ext=tk" unless build.with? "tcltk"
-    args << "--disable-install-doc" unless build.with? "doc"
-    args << "--disable-dtrace" unless MacOS::CLT.installed?
+    args = ["--prefix=#{prefix}",
+            "--enable-shared"]
 
-    # OpenSSL is deprecated on OS X 10.8 and Ruby can't find the outdated
-    # version (0.9.8r 8 Feb 2011) that ships with the system.
-    # See discussion https://github.com/sstephenson/ruby-build/issues/304
-    # and https://github.com/mxcl/homebrew/pull/18054
-    if MacOS.version >= :mountain_lion
-      args << "--with-openssl-dir=#{Formula.factory('openssl').opt_prefix}"
-    end
+    args << "--program-suffix=19" if build.include? "with-suffix"
+    args << "--with-arch=x86_64,i386" if build.universal?
+    args << "--disable-tcltk-framework" <<  "--with-out-ext=tcl" <<  "--with-out-ext=tk" unless build.include? "with-tcltk"
+    args << "--disable-install-doc" unless build.include? "with-doc"
 
     # Put gem, site and vendor folders in the HOMEBREW_PREFIX
     ruby_lib = HOMEBREW_PREFIX/"lib/ruby"
@@ -60,6 +54,8 @@ class Ruby < Formula
     system "./configure", *args
     system "make"
     system "make install"
+    system "make install-doc" if build.include? "with-doc"
+
   end
 
   def caveats; <<-EOS.undent
