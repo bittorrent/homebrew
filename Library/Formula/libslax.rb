@@ -2,8 +2,8 @@ require 'formula'
 
 class Libslax < Formula
   homepage 'http://www.libslax.org/'
-  url 'https://github.com/Juniper/libslax/releases/0.16.10/3029/libslax-0.16.10.tar.gz'
-  sha1 '0300a20ecf8cbc6315df3e13df3295024202378c'
+  url 'https://github.com/Juniper/libslax/releases/download/0.16.18/libslax-0.16.18.tar.gz'
+  sha1 'c20e29bb18d664fc209bcd176c821f26b2d57c04'
 
   head 'https://github.com/Juniper/libslax.git'
 
@@ -18,7 +18,8 @@ class Libslax < Formula
     system "sh ./bin/setup.sh" if build.head?
 
     system "./configure", "--disable-dependency-tracking",
-                          "--prefix=#{prefix}"
+                          "--prefix=#{prefix}",
+                          "--enable-libedit"
     system "make install"
   end
 end

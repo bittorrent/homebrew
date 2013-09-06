@@ -2,8 +2,8 @@ require 'formula'
 
 class Juise < Formula
   homepage 'https://github.com/Juniper/juise/wiki'
-  url 'https://github.com/Juniper/juise/releases/0.5.3/3012/juise-0.5.3.tar.gz'
-  sha1 'aacc8414f0ce278bc080ce3b41225a94e3000173'
+  url 'https://github.com/Juniper/juise/releases/download/0.5.8/juise-0.5.8.tar.gz'
+  sha1 '4529b0d5cf08185d0f9e991aea8fc62468290d9c'
 
   head 'https://github.com/Juniper/juise.git'
 
@@ -15,13 +15,12 @@ class Juise < Formula
   depends_on 'sqlite'
 
   def install
-    # If build from read run script to run autoconf
     system "sh ./bin/setup.sh" if build.head?
-
     system "./configure", "--disable-dependency-tracking",
                           "--prefix=#{prefix}",
                           "--with-libssh2-prefix=#{HOMEBREW_PREFIX}",
-                          "--with-sqlite3-prefix=#{Formula.factory('sqlite').opt_prefix}"
+                          "--with-sqlite3-prefix=#{Formula.factory('sqlite').opt_prefix}",
+                          "--enable-libedit"
     system "make install"
   end
 end
