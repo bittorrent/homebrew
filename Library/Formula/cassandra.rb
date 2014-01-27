@@ -2,8 +2,8 @@ require 'formula'
 
 class Cassandra < Formula
   homepage 'http://cassandra.apache.org'
-  url 'http://www.apache.org/dyn/closer.cgi?path=/cassandra/1.2.9/apache-cassandra-1.2.9-bin.tar.gz'
-  sha1 '217b3731784899f0228ea6f5bf98c9821e7f750e'
+  url 'http://www.apache.org/dyn/closer.cgi?path=/cassandra/2.0.4/apache-cassandra-2.0.4-bin.tar.gz'
+  sha1 '46586ab8054cdba58255efa0cb0a0e79647e8889'
 
   def install
     (var+"lib/cassandra").mkpath
@@ -27,6 +27,13 @@ class Cassandra < Formula
     (etc+"cassandra").install Dir["conf/*"]
     prefix.install Dir["*.txt"] + Dir["{bin,interface,javadoc,pylib,lib/licenses}"]
     prefix.install Dir["lib/*.jar"]
+
+    share.install [bin+'cassandra.in.sh', bin+'stop-server']
+    inreplace Dir["#{bin}/cassandra*", "#{bin}/debug-cql",
+                  "#{bin}/json2sstable", "#{bin}/nodetool",
+                  "#{bin}/sstable*"],
+      /`dirname "?\$0"?`\/cassandra.in.sh/,
+      "#{share}/cassandra.in.sh"
   end
 
   def caveats; <<-EOS.undent

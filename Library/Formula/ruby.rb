@@ -1,28 +1,25 @@
 require 'formula'
 
 class Ruby < Formula
-  homepage 'http://www.ruby-lang.org/en/'
-  url 'http://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p392.tar.bz2'
-  sha256 '5a7334dfdf62966879bf539b8a9f0b889df6f3b3824fb52a9303c3c3d3a58391'
+  homepage 'https://www.ruby-lang.org/'
+  url 'http://cache.ruby-lang.org/pub/ruby/2.1/ruby-2.1.0.tar.bz2'
+  sha256 '1d3f4ad5f619ec15229206b6667586dcec7cc986672c8fbb8558161ecf07e277'
 
-  head 'http://svn.ruby-lang.org/repos/ruby/trunk/'
+  head do
+    url 'http://svn.ruby-lang.org/repos/ruby/trunk/'
+    depends_on :autoconf
+  end
 
   env :std
 
   option :universal
-  option 'with-suffix', 'Suffix commands with "19"'
+  option 'with-suffix', 'Suffix commands with "21"'
   option 'with-doc', 'Install documentation'
   option 'with-tcltk', 'Install with Tcl/Tk support'
 
-  if build.universal?
-    depends_on 'autoconf' => :build
-  elsif build.head?
-    depends_on :autoconf
-  end
-
   depends_on 'pkg-config' => :build
-  depends_on 'readline'
-  depends_on 'gdbm'
+  depends_on 'readline' => :recommended
+  depends_on 'gdbm' => :optional
   depends_on 'libyaml'
   depends_on :x11 if build.include? 'with-tcltk'
 
@@ -33,13 +30,20 @@ class Ruby < Formula
   def install
     system "autoconf" if build.head?
 
-    args = ["--prefix=#{prefix}",
-            "--enable-shared"]
+    args = %W[--prefix=#{prefix} --enable-shared]
+    args << "--program-suffix=21" if build.with? "suffix"
+    args << "--with-arch=#{Hardware::CPU.universal_archs.join(',')}" if build.universal?
+    args << "--with-out-ext=tk" unless build.with? "tcltk"
+    args << "--disable-install-doc" unless build.with? "doc"
+    args << "--disable-dtrace" unless MacOS::CLT.installed?
 
-    args << "--program-suffix=19" if build.include? "with-suffix"
-    args << "--with-arch=x86_64,i386" if build.universal?
-    args << "--disable-tcltk-framework" <<  "--with-out-ext=tcl" <<  "--with-out-ext=tk" unless build.include? "with-tcltk"
-    args << "--disable-install-doc" unless build.include? "with-doc"
+    # OpenSSL is deprecated on OS X 10.8 and Ruby can't find the outdated
+    # version (0.9.8r 8 Feb 2011) that ships with the system.
+    # See discussion https://github.com/sstephenson/ruby-build/issues/304
+    # and https://github.com/Homebrew/homebrew/pull/18054
+    if MacOS.version >= :mountain_lion
+      args << "--with-opt-dir=#{Formula.factory('openssl').opt_prefix}"
+    end
 
     # Put gem, site and vendor folders in the HOMEBREW_PREFIX
     ruby_lib = HOMEBREW_PREFIX/"lib/ruby"
@@ -59,10 +63,13 @@ class Ruby < Formula
   end
 
   def caveats; <<-EOS.undent
-    NOTE: By default, gem installed binaries will be placed into:
+    By default, gem installed executables will be placed into:
       #{opt_prefix}/bin
 
-    You may want to add this to your PATH.
+    You may want to add this to your PATH. After upgrades, you can run
+      gem pristine --all --only-executables
+
+    to restore binstubs for installed gems.
     EOS
   end
 end
