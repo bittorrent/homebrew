@@ -123,16 +123,22 @@ class FormulaInstaller
 
         stdlibs = Keg.new(f.prefix).detect_cxx_stdlibs
         stdlib_in_use = CxxStdlib.new(stdlibs.first, MacOS.default_compiler)
-        stdlib_in_use.check_dependencies(f, f.recursive_dependencies)
+        begin
+          stdlib_in_use.check_dependencies(f, f.recursive_dependencies)
+        rescue IncompatibleCxxStdlibs => e
+          opoo e.message
+        end
 
+        stdlibs = Keg.new(f.prefix).detect_cxx_stdlibs :skip_executables => true
         tab = Tab.for_keg f.prefix
         tab.poured_from_bottle = true
         tab.tabfile.delete if tab.tabfile
         tab.write
       end
-    rescue
-      raise if ARGV.homebrew_developer?
+    rescue => e
+      raise e if ARGV.homebrew_developer?
       @pour_failed = true
+      onoe e.message
       opoo "Bottle installation failed: building from source."
     end
 
@@ -476,15 +482,7 @@ class FormulaInstaller
 
   def clean
     ohai "Cleaning" if ARGV.verbose?
-    if f.class.skip_clean_all?
-      opoo "skip_clean :all is deprecated"
-      puts "Skip clean was commonly used to prevent brew from stripping binaries."
-      puts "brew no longer strips binaries, if skip_clean is required to prevent"
-      puts "brew from removing empty directories, you should specify exact paths"
-      puts "in the formula."
-      return
-    end
-    Cleaner.new f
+    Cleaner.new(f).clean
   rescue Exception => e
     opoo "The cleaning step did not complete successfully"
     puts "Still, the installation was successful, so we will link it into your prefix"
@@ -505,9 +503,9 @@ class FormulaInstaller
     if f.local_bottle_path
       downloader = LocalBottleDownloadStrategy.new(f)
     else
-      downloader = f.downloader
-      fetched = f.fetch
-      f.verify_download_integrity fetched
+      bottle = f.bottle
+      downloader = bottle.downloader
+      bottle.verify_download_integrity(bottle.fetch)
     end
     HOMEBREW_CELLAR.cd do
       downloader.stage

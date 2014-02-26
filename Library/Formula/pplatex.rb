@@ -9,11 +9,11 @@ class Pplatex < Formula
   depends_on 'pcre'
 
   def install
-    system 'scons'
+    scons
     bin.install 'bin/pplatex', 'bin/ppdflatex'
   end
 
-  def test
+  test do
     system "#{bin}/pplatex", "-h"
   end
 end

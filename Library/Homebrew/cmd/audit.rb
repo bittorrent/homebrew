@@ -143,8 +143,14 @@ class FormulaAuditor
       end
 
       dep.options.reject do |opt|
-        # TODO -- fix for :recommended, should still allow --with-xyz
-        dep_f.build.has_option?(opt.name)
+        next true if dep_f.build.has_option?(opt.name)
+        dep_f.requirements.detect do |r|
+          if r.tags.include? :recommended
+            opt.name == "with-#{r.name}"
+          elsif r.tags.include? :optional
+            opt.name == "without-#{r.name}"
+          end
+        end
       end.each do |opt|
         problem "Dependency #{dep} does not define option #{opt.name.inspect}"
       end
@@ -286,6 +292,10 @@ class FormulaAuditor
   end
 
   def audit_text
+    if text =~ /system\s+['"]scons/
+      problem "use \"scons *args\" instead of \"system 'scons', *args\""
+    end
+
     if text =~ /system\s+['"]xcodebuild/ && text !~ /SYMROOT=/
       problem "xcodebuild should be passed an explicit \"SYMROOT\""
     end
@@ -419,7 +429,9 @@ class FormulaAuditor
       problem "No double 'without': Use `build.without? '#{$1}'` to check for \"--without-#{$1}\""
     end
 
-    unless f.name == 'mongodb' # Mongo writes out a Ruby script that uses ARGV
+    # Mongo writes out a Ruby script that uses ARGV
+    # Python formulae need ARGV for Requirements
+    unless f.name == 'mongodb' || f.name == "pyobject3"
       if line =~ /ARGV\.(?!(debug\?|verbose\?|value[\(\s]))/
         problem "Use build instead of ARGV to check options"
       end
@@ -439,7 +451,8 @@ class FormulaAuditor
     end
 
     if line =~ /skip_clean\s+:all/
-      problem "`skip_clean :all` is deprecated; brew no longer strips symbols"
+      problem "`skip_clean :all` is deprecated; brew no longer strips symbols\n" +
+              "\tPass explicit paths to prevent Homebrew from removing empty folders."
     end
 
     if line =~ /depends_on [A-Z][\w:]+\.new$/

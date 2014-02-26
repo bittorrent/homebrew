@@ -5,6 +5,7 @@
 # Options:
 # --keep-logs:    Write and keep log files under ./brewbot/
 # --cleanup:      Clean the Homebrew directory. Very dangerous. Use with care.
+# --clean-cache:  Remove all cached downloads. Use with care.
 # --skip-setup:   Don't check the local system is setup correctly.
 # --junit:        Generate a JUnit XML test results file.
 # --email:        Generate an email subject file.
@@ -327,7 +328,7 @@ class Test
     git 'am --abort 2>/dev/null'
     git 'rebase --abort 2>/dev/null'
     git 'reset --hard'
-    git 'checkout -f master'
+    git 'checkout -f master 2>/dev/null'
     git 'clean --force -dx'
   end
 
@@ -335,8 +336,6 @@ class Test
     @category = __method__
     force_flag = ''
     if ARGV.include? '--cleanup'
-      test 'brew cleanup -s'
-      test "rm -vrf #{HOMEBREW_CACHE}/*"
       test 'git clean --force -dx'
       force_flag = '-f'
     end
@@ -348,6 +347,7 @@ class Test
     if ARGV.include? '--cleanup'
       test 'git reset --hard'
       git 'stash pop 2>/dev/null'
+      test 'brew cleanup'
     end
 
     FileUtils.rm_rf @brewbot_root unless ARGV.include? "--keep-logs"
@@ -431,6 +431,12 @@ if ARGV.include? '--ci-pr-upload' or ARGV.include? '--ci-testing-upload'
   pr = ENV['UPSTREAM_PULL_REQUEST']
   number = ENV['UPSTREAM_BUILD_NUMBER']
 
+  system "git am --abort 2>/dev/null"
+  system "git rebase --abort 2>/dev/null"
+  safe_system "git checkout -f master"
+  safe_system "git reset --hard origin/master"
+  safe_system "brew update"
+
   if ARGV.include? '--ci-pr-upload'
     safe_system "brew pull --clean #{pr}"
   end
@@ -439,7 +445,7 @@ if ARGV.include? '--ci-pr-upload' or ARGV.include? '--ci-testing-upload'
 
   remote = "git@github.com:BrewTestBot/homebrew.git"
   tag = pr ? "pr-#{pr}" : "testing-#{number}"
-  safe_system "git push --force #{remote} :refs/tags/#{tag}"
+  safe_system "git push --force #{remote} master:master :refs/tags/#{tag}"
 
   path = "/home/frs/project/m/ma/machomebrew/Bottles/"
   url = "BrewTestBot,machomebrew@frs.sourceforge.net:#{path}"
@@ -481,7 +487,7 @@ if ARGV.include? "--junit"
       failure = testcase.add_element 'failure' if step.failed?
       if step.has_output?
         # Remove invalid XML CData characters from step output.
-        output = REXML::CData.new step.output.delete("\000\f\e")
+        output = REXML::CData.new step.output.delete("\000\b\e\f")
         if step.passed?
           system_out = testcase.add_element 'system-out'
           system_out.text = output
@@ -518,5 +524,8 @@ if ARGV.include? "--email"
     file.write email_subject
   end
 end
+
+
+safe_system "rm -rf #{HOMEBREW_CACHE}/*" if ARGV.include? "--clean-cache"
 
 exit any_errors ? 0 : 1

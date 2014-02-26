@@ -23,8 +23,8 @@ class Wine < Formula
   end
 
   devel do
-    url 'http://downloads.sourceforge.net/project/wine/Source/wine-1.7.10.tar.bz2'
-    sha256 '44270e4b97ef930e4e4b59088e6e3972e91e85bacf9a9a4d8712a877c9d5cbdb'
+    url 'http://downloads.sourceforge.net/project/wine/Source/wine-1.7.13.tar.bz2'
+    sha256 'a72fdee6e1898007b38f3b30584f86d996567ad8d2f1cc0fe3a877be0493b9df'
   end
 
   head do

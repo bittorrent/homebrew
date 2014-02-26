@@ -12,8 +12,8 @@ class Mongodb < Formula
   end
 
   devel do
-    url 'http://downloads.mongodb.org/src/mongodb-src-r2.5.4.tar.gz'
-    sha1 'ad40b93c9638178cd487c80502084ac3a9472270'
+    url 'http://downloads.mongodb.org/src/mongodb-src-r2.5.5.tar.gz'
+    sha1 '4827f3da107174a3cbb1f5b969c7f597ca09b4f8'
   end
 
   head 'https://github.com/mongodb/mongo.git'
@@ -35,8 +35,6 @@ class Mongodb < Formula
     # 2.6, but can't be backported to the current stable release.
     ENV.cxx += ' -stdlib=libstdc++' if ENV.compiler == :clang && MacOS.version >= :mavericks
 
-    scons = Formula.factory('scons').opt_prefix/'bin/scons'
-
     args = ["--prefix=#{prefix}", "-j#{ENV.make_jobs}"]
     args << '--64' if MacOS.prefer_64_bit?
     args << "--cc=#{ENV.cc}"
@@ -47,7 +45,7 @@ class Mongodb < Formula
       args << "--extrapathdyn=#{Formula.factory('openssl').opt_prefix}"
     end
 
-    system scons, 'install', *args
+    scons 'install', *args
 
     (prefix+'mongod.conf').write mongodb_conf
 

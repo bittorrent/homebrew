@@ -115,14 +115,8 @@ end
 class IncompatibleCxxStdlibs < Homebrew::InstallationError
   def initialize(f, dep, wrong, right)
     super f, <<-EOS.undent
-    #{f} dependency #{dep} was built with the following
-    C++ standard library: #{wrong.type_string} (from #{wrong.compiler})
-
-    This is incompatible with the standard library being used
-    to build #{f}: #{right.type_string} (from #{right.compiler})
-
-    Please reinstall #{dep} using a compatible compiler.
-    hint: Check https://github.com/Homebrew/homebrew/wiki/C++-Standard-Libraries
+    #{f} dependency #{dep} was built with a different C++ standard
+    library (#{wrong.type_string} from #{wrong.compiler}). This could cause problems at runtime.
     EOS
   end
 end
@@ -175,7 +169,14 @@ class BuildError < Homebrew::InstallationError
   end
 
   def issues
-    @issues ||= GitHub.issues_for_formula(formula.name)
+    @issues ||= fetch_issues
+  end
+
+  def fetch_issues
+    GitHub.issues_for_formula(formula.name)
+  rescue GitHub::RateLimitExceededError => e
+    opoo e.message
+    []
   end
 
   def dump
@@ -228,6 +229,16 @@ class CompilerSelectionError < Homebrew::InstallationError
   end
 end
 
+# Raised in Resource.fetch
+class DownloadError < RuntimeError
+  def initialize(resource, e)
+    super <<-EOS.undent
+      Failed to download resource #{resource.download_name.inspect}
+      #{e.message}
+      EOS
+  end
+end
+
 # raised in CurlDownloadStrategy.fetch
 class CurlDownloadStrategyError < RuntimeError; end
 
@@ -239,23 +250,19 @@ class ChecksumMissingError < ArgumentError; end
 
 # raised by Pathname#verify_checksum when verification fails
 class ChecksumMismatchError < RuntimeError
-  attr_accessor :advice
-  attr_reader :expected, :actual, :hash_type
+  attr_reader :expected, :hash_type
 
-  def initialize expected, actual
+  def initialize fn, expected, actual
     @expected = expected
-    @actual = actual
     @hash_type = expected.hash_type.to_s.upcase
 
     super <<-EOS.undent
       #{@hash_type} mismatch
-      Expected: #{@expected}
-      Actual: #{@actual}
+      Expected: #{expected}
+      Actual: #{actual}
+      Archive: #{fn}
+      To retry an incomplete download, remove the file above.
       EOS
-  end
-
-  def to_s
-    super + advice.to_s
   end
 end
 
